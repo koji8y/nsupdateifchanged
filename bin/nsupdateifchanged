@@ -1,0 +1,73 @@
+#!/bin/bash
+PATH=/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH
+
+default_ifs="en0 en1 ens160 ens171 ens214 ens251 ens252"
+case "$1" in
+	"-d")
+		run=echo
+		verbose=yes
+		shift
+		;;
+	"-v")
+		verbose=yes
+		shift
+		;;
+	"-f")
+		verbose=yes
+		forceupdate=yes
+		shift
+		;;
+	"-h")
+		echo "DNS data updater - Update DNS if its address is different from actual one."
+		echo " Usage: $(basename $0) [-d|-v|-f] [interface_name [interface_name ...]]"
+		echo "    interface_name: Network interface name. Plural names can be specified."
+		echo "        (Default name(s): $default_ifs)"
+		echo "    -d: Dry run.  Show what should be done without doing anything actually."
+		echo "    -v: Verbose mode.  Show what are performed."
+		echo "    -f: Force mode.  Update DNS even if unnecessary."
+		echo ''
+		echo " An A record for a valid IP address of the specified interface is sent"
+		echo " to an adequate DNS server."
+		echo " Hostname and DNS zone name are retrieved from the result of hostname"
+		echo " command."
+		echo " Multiple A records will be registered if all the records are valid."
+		exit 0
+		;;
+esac
+ifs="$@"
+case "$ifs" in
+	"")	ifs="$default_ifs"
+		;;
+esac
+tmp=/tmp/nsupdate.$$
+trap "rm -f ${tmp} > /dev/null 2>&1; ${verbose:+echo removed ${tmp}}" 0 2 9 15
+hostname=$(hostname)
+case "$hostname" in
+	*.*)	;;
+	*)	echo "Hostname must be fully qualified. Aborting."
+		exit 1
+		;;
+esac
+oldipaddrs=$(dig +noadditional $hostname | awk '/^$/{next} /^;/{next} /[\t ]A[\t ]/ {print $NF}' | sort | uniq)
+ipaddrs=$(for ifn in $ifs; do ifconfig ${1:-${ifn}} 2>/dev/null | awk '/inet / {print $2}' | awk -F: '{print $NF}'; done | sort | uniq)
+ipaddrs=$(echo $ipaddrs)
+oldipaddrs=$(echo $oldipaddrs)
+if [ "${oldipaddrs}." == "${ipaddrs}." ]; then
+	if [ "${forceupdate:+x}" == "x" ]; then
+		${verbose:+echo "Force update ipaddr."}
+	else
+		${verbose:+echo "ip addr: ${ipaddrs}"}
+		${verbose:+echo Correct addr is registered.}
+		exit 0
+	fi
+fi
+
+echo "Updating old ip addr ${oldipaddrs} to the new ${ipaddrs}..."
+echo "update delete ${hostname} a"  > ${tmp}
+for ipaddr in ${ipaddrs}; do
+	echo "update add ${hostname} 86400 a $ipaddr"  >> ${tmp}
+done
+echo send >> ${tmp}
+$run nsupdate ${verbose:+-d -v} ${tmp}
+${verbose:+cat ${tmp}}
