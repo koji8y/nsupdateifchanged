@@ -54,7 +54,7 @@ case "${zone}" in
 esac
 case "$hostname" in
 	*.*)	;;
-	*)	echo "Hostname must be fully qualified or zone is specified with '-z' option. Aborting."
+	*)	echo "Hostname must be fully qualified or zone should be specified with '-z' option. Aborting."
 		exit 1
 		;;
 esac
