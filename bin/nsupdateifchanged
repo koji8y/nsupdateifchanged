@@ -3,29 +3,30 @@ PATH=/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 export PATH
 
 default_ifs="en0 en1 ens160 ens171 ens214 ens251 ens252"
-case "$1" in
-	"-d")
+while getopts dvfhz: option; do case "${option}" in
+	d)
 		run=echo
 		verbose=yes
-		shift
 		;;
-	"-v")
+	v)
 		verbose=yes
-		shift
 		;;
-	"-f")
+	f)
 		verbose=yes
 		forceupdate=yes
-		shift
 		;;
-	"-h")
+	z)
+		zone="${OPTARG}"
+		;;
+	h)
 		echo "DNS data updater - Update DNS if its address is different from actual one."
-		echo " Usage: $(basename $0) [-d|-v|-f] [interface_name [interface_name ...]]"
+		echo " Usage: $(basename $0) [-d|-v|-f] [-z zone] [interface_name [interface_name ...]]"
 		echo "    interface_name: Network interface name. Plural names can be specified."
 		echo "        (Default name(s): $default_ifs)"
 		echo "    -d: Dry run.  Show what should be done without doing anything actually."
 		echo "    -v: Verbose mode.  Show what are performed."
 		echo "    -f: Force mode.  Update DNS even if unnecessary."
+		echo "    -z zone: Use specified zone name."
 		echo ''
 		echo " An A record for a valid IP address of the specified interface is sent"
 		echo " to an adequate DNS server."
@@ -34,7 +35,8 @@ case "$1" in
 		echo " Multiple A records will be registered if all the records are valid."
 		exit 0
 		;;
-esac
+esac; done
+shift $(expr "${OPTIND}" - 1)
 ifs="$@"
 case "$ifs" in
 	"")	ifs="$default_ifs"
@@ -43,9 +45,16 @@ esac
 tmp=/tmp/nsupdate.$$
 trap "rm -f ${tmp} > /dev/null 2>&1; ${verbose:+echo removed ${tmp}}" 0 2 9 15
 hostname=$(hostname)
+case "${zone}" in
+	"")
+		;;
+	*)
+		hostname="${hostname%%.*}.${zone}"
+		;;
+esac
 case "$hostname" in
 	*.*)	;;
-	*)	echo "Hostname must be fully qualified. Aborting."
+	*)	echo "Hostname must be fully qualified or zone is specified with '-z' option. Aborting."
 		exit 1
 		;;
 esac
