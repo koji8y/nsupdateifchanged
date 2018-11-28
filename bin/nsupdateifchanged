@@ -33,6 +33,8 @@ while getopts dvfhz: option; do case "${option}" in
 		echo " Hostname and DNS zone name are retrieved from the result of hostname"
 		echo " command."
 		echo " Multiple A records will be registered if all the records are valid."
+		echo " Zone name is picked up from search directive in /etc/resolv.conf"
+		echo " if -z is not specified and hostname is not fully qualified."
 		exit 0
 		;;
 esac; done
@@ -50,6 +52,16 @@ case "${zone}" in
 		;;
 	*)
 		hostname="${hostname%%.*}.${zone}"
+		;;
+esac
+case "$hostname" in
+	*.*)	;;
+	*)	zonename=$(awk '/^search/ {print $2}' /etc/resolv.conf)
+		case "$zonename" in
+			"")	;;
+			*)	hostname=${hostname}.${zonename}
+				;;
+		esac
 		;;
 esac
 case "$hostname" in
