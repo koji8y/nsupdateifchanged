@@ -87,7 +87,7 @@ fi
 echo "Updating old ip addr ${oldipaddrs} to the new ${ipaddrs}..."
 echo "update delete ${hostname} a"  > ${tmp}
 for ipaddr in ${ipaddrs}; do
-	echo "update add ${hostname} 86400 a $ipaddr"  >> ${tmp}
+	echo "update add ${hostname} ${TTL4NSUPDATE:-300} a $ipaddr"  >> ${tmp}
 done
 echo send >> ${tmp}
 $run nsupdate ${verbose:+-d -v} ${tmp}
