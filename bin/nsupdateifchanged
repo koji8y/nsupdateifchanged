@@ -71,7 +71,7 @@ case "$hostname" in
 		;;
 esac
 oldipaddrs=$(dig +noadditional $hostname | awk '/^$/{next} /^;/{next} /[\t ]A[\t ]/ {print $NF}' | sort | uniq)
-ipaddrs=$(for ifn in $ifs; do ifconfig ${ifn} 2>/dev/null | awk '/inet / {print $2}' | awk -F: '{print $NF}'; done | sort | uniq)
+ipaddrs=$(for ifn in $ifs; do ifconfig ${ifn} 2>/dev/null | awk '/inet / {print $2}' | awk -F: '/^169\.254\./{next}{print $NF}'; done | sort | uniq)
 ipaddrs=$(echo $ipaddrs)
 oldipaddrs=$(echo $oldipaddrs)
 if [ "${oldipaddrs}." == "${ipaddrs}." ]; then
